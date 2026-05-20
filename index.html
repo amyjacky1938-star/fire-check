@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>消防點檢系統 - 兆利科技</title>
 
+  <script src="https://unpkg.com/html5-qrcode"></script>
+
   <link rel="manifest" href="manifest.json">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
@@ -12,8 +14,6 @@
   <link rel="apple-touch-icon" href="https://cdn.phototourl.com/free/2026-05-12-aea1713e-4f2a-46d6-a473-93fb2a3448ba.png">
 
   <script src="https://cdn.tailwindcss.com"></script>  
-  <script src="https://unpkg.com/html5-qrcode"></script>
-
   <script>
     const WEBHOOK_URL = "https://default5e08b912309f4900b9e179fae11d8e.2a.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/c10d2f174a544776b39a40c91439e042/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Scf21GXPNskql0lrEVY8xZXKuMetE9LJZoYRrcVF9e8"; 
     const READ_API = "https://default5e08b912309f4900b9e179fae11d8e.2a.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/936bca953b404ce3b51409647874490d/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=5Zexelu5ljymRba54JEjA6o7kITqo5QIb2baBR8QvPA"; 
@@ -49,7 +49,9 @@
           <p class="text-blue-200 text-[9px] font-bold uppercase mt-1">Jarllytec Safety System</p>
         </div>
       </div>
-      <button id="refreshBtn" onclick="fetchDashboardData()" class="bg-white/20 p-2 rounded-full text-white active:scale-90 transition-transform">🔄</button>
+      <div class="flex items-center gap-2">
+        <button id="refreshBtn" onclick="fetchDashboardData()" class="bg-white/20 p-2 rounded-full text-white active:scale-90 transition-transform">🔄</button>
+      </div>
     </div>
     <div class="flex justify-around text-white text-sm">
       <button onclick="showPage('check')" id="btnCheck" class="nav-tab active pb-2 px-4">現場點檢</button>
@@ -66,25 +68,29 @@
       </div>
     </div>
 
-    <div class="flat-card border-l-4 border-blue-500 py-5">
-      <span class="text-[9px] text-slate-400 font-black block mb-1 uppercase tracking-widest">Device ID</span>
-      
-      <div class="flex justify-between items-center mb-2">
-        <div id="displayId" class="text-2xl font-black text-slate-800 font-mono italic tracking-tighter text-red-500">請掃描 QR Code</div>
-        <button onclick="startScanner()" class="bg-blue-600 text-white px-4 py-2 rounded-xl font-black text-[12px] shadow-lg flex items-center gap-1 active:scale-95 transition-transform">
-          📷 掃描
-        </button>
-      </div>
-      
-      <div id="reader" class="hidden w-full overflow-hidden rounded-xl border border-slate-200 my-4"></div>
+<div class="flat-card border-l-4 border-blue-500 py-5">
+  <div class="flex justify-between items-center mb-2">
+    <div>
+      <span class="text-[9px] text-slate-400 font-black block uppercase tracking-widest">Device ID</span>
+    </div>
+    <button onclick="startScanner()" class="bg-blue-600 text-white text-[12px] font-black px-4 py-2 rounded-lg flex items-center gap-1 shadow-md active:scale-95 transition-transform">
+      📷 掃描
+    </button>
+  </div>
+  
+  <div class="flex justify-between items-end mb-2">
+    <div id="displayId" class="text-2xl font-black text-slate-800 font-mono italic tracking-tighter text-red-500">請掃描 QR Code</div>
 
-      <div class="flex justify-between items-end mb-2">
-        <span id="deviceTypeName" class="text-[11px] font-black text-blue-600 bg-blue-50 px-3 py-1 rounded-lg italic">未識別</span>
-      </div>
-      <div id="expiryContainer" class="hidden text-[11px] font-bold text-slate-500 border-t border-slate-100 pt-2 mt-2 flex justify-between">
-        <span>📅 設備有效期限：</span>
-        <span id="deviceExpiryDate" class="text-yellow-600 font-mono">載入中...</span>
-      </div>
+
+  <div id="reader" class="hidden w-full mt-2 rounded-lg overflow-hidden"></div>
+  
+  <div id="expiryContainer" class="hidden text-[11px] font-bold text-slate-500 border-t border-slate-100 pt-2 mt-2 flex justify-between">
+    <span>📅 設備有效期限：</span>
+    <span id="deviceExpiryDate" class="text-yellow-600 font-mono">載入中...</span>
+  </div>
+</div>
+
+      <div id="reader" class="w-full"></div>
     </div>
 
     <div id="mainUI" class="hidden">
@@ -116,21 +122,27 @@
     </div>
     <div class="flat-card border-l-4 border-blue-600">
         <h3 class="font-black text-slate-800 text-sm mb-4 italic">🏢 廠區完成進度</h3>
-        <div id="factory-progress" class="space-y-4"><p class="text-xs text-slate-400">正在計算數據...</p></div>
+        <div id="factory-progress" class="space-y-4">
+            <p class="text-xs text-slate-400">正在計算數據...</p>
+        </div>
     </div>
     <div class="flat-card border-l-4 border-yellow-500">
         <div class="flex justify-between items-center mb-3">
             <h3 class="font-black text-slate-800 text-sm italic">📅 滅火器效期警示</h3>
             <span id="stat-expiry-count" class="bg-yellow-100 text-yellow-600 text-[10px] font-black px-2 py-0.5 rounded">0</span>
         </div>
-        <div id="expiry-list" class="text-[11px] text-slate-500 space-y-2 max-h-48 overflow-y-auto pr-2 custom-scroll">載入中...</div>
+        <div id="expiry-list" class="text-[11px] text-slate-500 space-y-2 max-h-48 overflow-y-auto pr-2 custom-scroll">
+            載入中...
+        </div>
     </div>
     <div class="flat-card border-l-4 border-red-500">
         <div class="flex justify-between items-center mb-3">
             <h3 class="font-black text-slate-800 text-sm italic">🔍 異常損壞明細</h3>
             <span id="stat-error-count" class="bg-red-100 text-red-600 text-[10px] font-black px-2 py-0.5 rounded">0</span>
         </div>
-        <div id="error-list" class="text-[11px] text-slate-500 space-y-2 max-h-48 overflow-y-auto pr-1 custom-scroll">尚未有異常回報</div>
+        <div id="error-list" class="text-[11px] text-slate-500 space-y-2 max-h-48 overflow-y-auto pr-1 custom-scroll">
+            尚未有異常回報
+        </div>
     </div>
   </main>
 
@@ -143,9 +155,28 @@
   </div>
 
 <script>
-  let selectedAbnormalItems = new Set();
+  // 掃描器邏輯
+// 掃描器邏輯：點擊按鈕後顯示掃描框，掃描後自動關閉並導向
+function startScanner() {
+  const readerDiv = document.getElementById('reader');
+  readerDiv.classList.remove('hidden'); // 顯示掃描區域
+  
   const html5QrCode = new Html5Qrcode("reader");
+  html5QrCode.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: 200 },
+    (decodedText) => {
+      // 掃描成功後，停止相機並移除掃描框
+      html5QrCode.stop().then(() => {
+          readerDiv.classList.add('hidden'); 
+          window.location.href = window.location.pathname + "?id=" + decodedText;
+      });
+    },
+    (errorMessage) => { /* 掃描中 */ }
+  ).catch(err => alert("無法開啟相機：" + err));
+}
 
+  let selectedAbnormalItems = new Set();
   const deviceConfigs = {
     "DCP": { name: "乾粉滅火器", items: ["鋼瓶無鏽蝕變形", "皮管無堵塞斷裂", "安全插銷已固定", "壓力表指針在綠區", "前方無障礙物且在效期內"], ab: ["壓力不足", "插銷遺失", "藥劑過期", "瓶身鏽蝕", "皮管破損"] },
     "CO2": { name: "二氧化碳滅火器", items: ["鋼瓶無鏽蝕變形", "喇叭噴嘴無裂損", "安全插銷已固定", "重量已有標示", "前方無障礙物"], ab: ["重量未標示", "插銷遺失", "噴嘴裂損", "前方堆放雜物"] },
@@ -153,47 +184,51 @@
     "EP": { name: "緩降機", items: ["器具完整無短缺", "支架固定良好", "操作方法標示清楚", "下降空間無阻擋"], ab: ["支架鬆動", "繩索受潮或不符合樓層高度", "操作方式標示不清", "下降空間受阻"] }
   };
 
-  window.onload = () => {
+window.onload = async () => {
     const savedName = localStorage.getItem('inspector');
     if (savedName) document.getElementById('inspector').value = savedName;
-  };
+    const urlParams = new URLSearchParams(window.location.search);
+    const eqId = urlParams.get('id');
 
-  // 掃描器啟動函數
-  function startScanner() {
-    document.getElementById('reader').classList.remove('hidden');
-    html5QrCode.start(
-      { facingMode: "environment" },
-      { fps: 10, qrbox: { width: 200, height: 200 } },
-      (decodedText) => {
-        handleScanResult(decodedText);
-        html5QrCode.stop();
-        document.getElementById('reader').classList.add('hidden');
-      },
-      (err) => console.log(err)
-    ).catch(err => alert("無法開啟相機，請檢查權限設定"));
-  }
-
-  async function handleScanResult(eqId) {
-    document.getElementById('displayId').innerText = eqId;
-    document.getElementById('displayId').classList.remove('text-red-500');
-    document.getElementById('mainUI').classList.remove('hidden');
-    
-    let type = eqId.includes("CO2") ? "CO2" : eqId.includes("FH") ? "FH" : eqId.includes("EP") ? "EP" : "DCP";
-    const config = deviceConfigs[type];
-    document.getElementById('deviceTypeName').innerText = config.name;
-    document.getElementById('items').innerHTML = config.items.map(i => `<li class="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100"><span class="text-green-500 font-black">✓</span><span class="text-[12px] font-bold text-slate-600">${i}</span></li>`).join('');
-    document.getElementById('abnormalChips').innerHTML = config.ab.map(a => `<button onclick="toggleChip(this)" class="chip px-3 py-2 bg-white rounded-lg text-[11px] font-bold text-red-600">${a}</button>`).join('');
-    
-    if (type === "DCP") {
-      document.getElementById('expiryContainer').classList.remove('hidden');
-      try {
-        const res = await fetch(READ_API, { method: 'POST', body: JSON.stringify({}) });
-        const data = await res.json();
-        const currentDevice = data.deviceDetails?.find(item => item.設備編號 === eqId);
-        document.getElementById('deviceExpiryDate').innerText = currentDevice?.效期 ? String(currentDevice.效期).substring(0, 10) : "無紀錄";
-      } catch (e) { document.getElementById('deviceExpiryDate').innerText = "連線失敗"; }
+    if (eqId) {
+      // 1. 顯示並更新 ID
+      document.getElementById('displayId').innerText = eqId;
+      document.getElementById('displayId').classList.remove('text-red-500');
+      
+      // 2. [關鍵修正] 強制顯示 mainUI 區塊 (就是清單區域)
+      document.getElementById('mainUI').classList.remove('hidden');
+      
+      let type = eqId.includes("CO2") ? "CO2" : eqId.includes("FH") ? "FH" : eqId.includes("EP") ? "EP" : "DCP";
+      const config = deviceConfigs[type];
+      
+      // 3. 填入內容
+      document.getElementById('deviceTypeName').innerText = config.name;
+      document.getElementById('items').innerHTML = config.items.map(i => `<li class="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100"><span class="text-green-500 font-black">✓</span><span class="text-[12px] font-bold text-slate-600">${i}</span></li>`).join('');
+      document.getElementById('abnormalChips').innerHTML = config.ab.map(a => `<button onclick="toggleChip(this)" class="chip px-3 py-2 bg-white rounded-lg text-[11px] font-bold text-red-600">${a}</button>`).join('');
+      
+      // ... (後續效期處理邏輯保持不變)
+      if (type === "DCP") {
+        document.getElementById('expiryContainer').classList.remove('hidden');
+        document.getElementById('deviceExpiryDate').innerText = "雲端效期讀取中...";
+        try {
+          const res = await fetch(READ_API, { method: 'POST', body: JSON.stringify({}) });
+          const data = await res.json();
+          const list = data && data.deviceDetails ? data.deviceDetails : [];
+          const currentDevice = Array.isArray(list) ? list.find(item => item.設備編號 === eqId) : null;
+          if (currentDevice && currentDevice.效期) {
+            document.getElementById('deviceExpiryDate').innerText = String(currentDevice.效期).substring(0, 10);
+          } else {
+            document.getElementById('deviceExpiryDate').innerText = "總表此設備無效期紀錄";
+          }
+        } catch (e) {
+          console.error("讀取效期出錯:", e);
+          document.getElementById('deviceExpiryDate').innerText = "連線失敗";
+        }
+      } else {
+        document.getElementById('expiryContainer').classList.add('hidden');
+      }
     }
-  }
+  };
 
   async function fetchDashboardData() {
     const btn = document.getElementById('refreshBtn');
@@ -203,9 +238,25 @@
       const data = await res.json();
       document.getElementById('stat-total').innerText = data.totalCount || 0;
       document.getElementById('stat-pending').innerText = data.pendingCount || 0;
-      
-      // 處理廠區進度與異常清單 (省略以保持簡潔，邏輯與您原始版本一致)
-    } finally { if (btn) btn.classList.remove('animate-spin-custom'); }
+      const factoryConfigs = [ { id: 'J1', key: 'j1', total: 115 }, { id: 'J2', key: 'j2', total: 62 }, { id: 'J3', key: 'j3', total: 99 } ];
+      document.getElementById('factory-progress').innerHTML = factoryConfigs.map(f => {
+        const done = (data[f.key] && data[f.key].done) ? Number(data[f.key].done) : 0;
+        return `<div><div class="flex justify-between text-[11px] font-bold mb-1"><span>${f.id} 廠區</span><span class="text-blue-600">${done} / ${f.total}</span></div><div class="progress-bar"><div class="progress-fill" style="width: 0%; transition: width 1s ease-in-out;"></div></div></div>`;
+      }).join('');
+      setTimeout(() => {
+        const bars = document.querySelectorAll('.progress-fill');
+        factoryConfigs.forEach((f, i) => {
+          const done = (data[f.key] && data[f.key].done) ? Number(data[f.key].done) : 0;
+          const percent = Math.min(Math.round((done / f.total) * 100), 100);
+          if (bars[i]) bars[i].style.width = percent + '%';
+        });
+      }, 200);
+      const expiryItems = (data.warningList || []).filter(i => i.設備編號.includes("DCP"));
+      document.getElementById('stat-expiry-count').innerText = expiryItems.length;
+      document.getElementById('expiry-list').innerHTML = expiryItems.map(e => `<div class="flex justify-between border-b border-slate-50 pb-1"><span class="font-bold font-mono">${e.設備編號}</span><span class="text-yellow-600 font-bold">${String(e.效期).substring(0, 10)}</span></div>`).join('') || "目前無過期警示";
+      document.getElementById('stat-error-count').innerText = (data.errorList || []).length;
+      document.getElementById('error-list').innerHTML = (data.errorList || []).map(e => `<div class="border-b border-slate-100 pb-2 mb-2"><div class="flex justify-between text-[11px] mb-0.5"><span class="font-black text-slate-800 font-mono">設備編號：${e.設備編號}</span><span class="font-black text-slate-500">正確位置：<span class="text-blue-600 font-mono">${e.正確位置 || e.廠區位置 || '未註記'}</span></span></div><div class="text-red-500 font-bold text-[11px]">損壞備註：<span>${e.損壞備註 || e.備註 || '損壞'}</span></div></div>`).join('') || "目前全數正常";
+    } catch (e) { console.error("抓取失敗：", e); } finally { if (btn) btn.classList.remove('animate-spin-custom'); }
   }
 
   function toggleChip(btn) {
@@ -218,16 +269,12 @@
     const inspector = document.getElementById('inspector').value;
     if (!inspector) { alert('請填寫姓名！'); return; }
     localStorage.setItem('inspector', inspector);
-    const payload = { 
-      equipmentId: document.getElementById('displayId').innerText, 
-      inspector, status, 
-      reason: status === '異常' ? Array.from(selectedAbnormalItems).join(',') + ' ' + document.getElementById('reason').value : '無', 
-      timestamp: new Date().toLocaleString() 
-    };
+    const payload = { equipmentId: document.getElementById('displayId').innerText, inspector, status, reason: status === '異常' ? Array.from(selectedAbnormalItems).join(',') + ' ' + document.getElementById('reason').value : '無', timestamp: new Date().toLocaleString() };
     document.getElementById('msg').classList.remove('hidden');
+    document.getElementById('statusText').innerText = "上傳中...";
     try {
       const response = await fetch(WEBHOOK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      document.getElementById('statusText').innerText = response.ok ? "資料已同步" : "後端錯誤";
+      if (response.ok) { document.getElementById('statusText').innerText = "資料已同步"; } else { document.getElementById('statusText').innerText = "後端錯誤: " + response.status; }
     } catch (e) { document.getElementById('statusText').innerText = "連線失敗"; }
   }
 
