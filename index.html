@@ -522,7 +522,7 @@ async function sendToPowerAutomate(payload) {
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').then(() => console.log('離線功能已啟用'));
+      navigator.serviceWorker.register('./sw.js').then(() => console.log('離線功能已啟用'));
     });
   }
 </script>  
