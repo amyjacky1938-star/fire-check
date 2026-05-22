@@ -1,19 +1,22 @@
-const CACHE_NAME = 'fire-check-v2'; // 更新版本號
+const CACHE_NAME = 'fire-check-v3';
+// 移除開頭的 /，使用相對路徑
 const ASSETS = [
-  '/',
-  '/index.html',
-  'https://cdn.tailwindcss.com',
-  'https://unpkg.com/html5-qrcode'
+  './',
+  './index.html'
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
+  e.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(ASSETS).catch(err => console.log('部分資源快取失敗', err));
+    })
+  );
 });
 
 self.addEventListener('fetch', (e) => {
   e.respondWith(
     caches.match(e.request).then((res) => {
-      // 若在快取中找到則回傳，否則從網路抓取
+      // 如果有快取就用快取，沒有就去網路抓
       return res || fetch(e.request);
     })
   );
