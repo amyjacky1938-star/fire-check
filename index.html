@@ -522,9 +522,12 @@ async function sendToPowerAutomate(payload) {
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').then(() => console.log('離線功能已啟用'));
+      // 指定正確的檔案位置
+      navigator.serviceWorker.register('/fire-check/sw.js')
+        .then(reg => console.log('SW 註冊成功，Scope:', reg.scope))
+        .catch(err => console.log('註冊失敗:', err));
     });
   }
-</script>  
+</script>
 </body>
 </html>
