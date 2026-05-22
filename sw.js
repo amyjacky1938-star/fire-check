@@ -1,22 +1,18 @@
-const CACHE_NAME = 'fire-check-v3';
-// 移除開頭的 /，使用相對路徑
+const CACHE_NAME = 'fire-check-v4';
+// 改為絕對路徑，確保與您的 GitHub Pages 路徑對齊
 const ASSETS = [
-  './',
-  './index.html'
+  '/fire-check/',
+  '/fire-check/index.html'
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS).catch(err => console.log('部分資源快取失敗', err));
-    })
-  );
+  e.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
 });
 
 self.addEventListener('fetch', (e) => {
   e.respondWith(
     caches.match(e.request).then((res) => {
-      // 如果有快取就用快取，沒有就去網路抓
+      // 離線優先：有快取就用，沒快取就去網路上抓
       return res || fetch(e.request);
     })
   );
