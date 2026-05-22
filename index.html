@@ -468,57 +468,45 @@
     else { selectedAbnormalItems.add(item); btn.classList.add('selected'); }
   }
 
-  async function submitData(status) {
-    if (isSubmitting) return; 
-
+async function submitData(status) {
     const inspector = document.getElementById('inspector').value;
     if (!inspector) { alert('請填寫姓名！'); return; }
     localStorage.setItem('inspector', inspector);
 
-    const eqId = document.getElementById('displayId').innerText;
-    const localKey = getInspectedKey(eqId);
-
-    if (window.memoryDoneList.has(eqId)) {
-      alert('🛑 此設備剛才已完成點檢！');
-      lockUI(eqId);
-      return;
-    }
-
-    isSubmitting = true; 
-    
     const payload = { 
-      equipmentId: eqId, 
-      inspector, 
-      status, 
-      reason: status === '異常' ? Array.from(selectedAbnormalItems).join(',') + ' ' + document.getElementById('reason').value : '無', 
-      timestamp: new Date().toLocaleString() 
+        equipmentId: document.getElementById('displayId').innerText, 
+        inspector, status, 
+        reason: status === '異常' ? Array.from(selectedAbnormalItems).join(',') + ' ' + document.getElementById('reason').value : '無', 
+        timestamp: new Date().toLocaleString() 
     };
-    
+
+    // 核心修改：判斷網路狀態
+    if (navigator.onLine) {
+        // 有網路直接傳
+        sendToPowerAutomate(payload); 
+    } else {
+        // 沒網路：存入 localStorage
+        let queue = JSON.parse(localStorage.getItem('offlineQueue') || '[]');
+        queue.push(payload);
+        localStorage.setItem('offlineQueue', JSON.stringify(queue));
+        alert("⚠️ 目前離線，資料已暫存在手機，恢復連線後將自動同步！");
+        document.getElementById('msg').classList.add('hidden');
+    }
+}
+
+// 建立 sendToPowerAutomate 函數 (將原本 submitData 裡面的 fetch 邏輯移到這裡)
+async function sendToPowerAutomate(payload) {
     document.getElementById('msg').classList.remove('hidden');
     document.getElementById('statusText').innerText = "上傳中...";
-    
     try {
-      const response = await fetch(WEBHOOK_URL, { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify(payload)
-      });
-      
-      if (response.ok) { 
-        window.memoryDoneList.add(eqId); 
-        try { localStorage.setItem(localKey, 'true'); } catch(e) {}
-        document.getElementById('statusText').innerText = "資料已同步"; 
-      } else { 
-        alert("伺服器端發生錯誤");
-        document.getElementById('msg').classList.add('hidden');
-        isSubmitting = false; 
-      }
-    } catch (e) { 
-      alert("網路解讀失敗");
-      document.getElementById('msg').classList.add('hidden');
-      isSubmitting = false; 
-    }
-  }
+        const res = await fetch(WEBHOOK_URL, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload) 
+        });
+        document.getElementById('statusText').innerText = res.ok ? "上傳成功！" : "上傳失敗";
+    } catch(e) { document.getElementById('statusText').innerText = "連線異常"; }
+}
 
   function showPage(page) {
     document.getElementById('pageCheck').classList.toggle('hidden', page !== 'check');
