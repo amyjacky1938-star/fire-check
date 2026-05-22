@@ -1,16 +1,20 @@
-const CACHE_NAME = 'fire-check-v1';
+const CACHE_NAME = 'fire-check-v2'; // 更新版本號
+const ASSETS = [
+  '/',
+  '/index.html',
+  'https://cdn.tailwindcss.com',
+  'https://unpkg.com/html5-qrcode'
+];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(['/', '/index.html'])));
+  e.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
 });
 
 self.addEventListener('fetch', (e) => {
-  // 關鍵修改：如果是讀取外部資源（如 unpkg, tailwind），直接走網路，不要卡在快取
-  if (e.request.url.includes('unpkg.com') || e.request.url.includes('tailwindcss')) {
-    e.respondWith(fetch(e.request));
-  } else {
-    e.respondWith(
-      caches.match(e.request).then((res) => res || fetch(e.request))
-    );
-  }
+  e.respondWith(
+    caches.match(e.request).then((res) => {
+      // 若在快取中找到則回傳，否則從網路抓取
+      return res || fetch(e.request);
+    })
+  );
 });
