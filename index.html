@@ -531,5 +531,12 @@
   let isSubmitting = false;
   function showAbnormal() { document.getElementById('abnormalForm').classList.toggle('hidden'); }
 </script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').then(() => console.log('離線功能已啟用'));
+    });
+  }
+</script>  
 </body>
 </html>
