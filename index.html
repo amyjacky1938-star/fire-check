@@ -161,7 +161,7 @@
  </div>
  
 <script>
-  // 1. 掃描器邏輯
+  // 1. 掃描器邏輯 (💡 在此整合：不設限讀取！掃到飲水機自動轉彎)
  function startScanner() {
     const readerDiv = document.getElementById('reader');
     readerDiv.classList.remove('hidden'); 
@@ -173,6 +173,22 @@
       (decodedText) => {
         html5QrCode.stop().then(() => {
             readerDiv.classList.add('hidden'); 
+            
+            // 🎯 【核心修正：讓掃描器可以讀取並判別飲水機】
+            let upperText = decodedText.trim().toUpperCase();
+            
+            // 如果同仁掃到的條碼或網址包含 "WD" (飲水機)，直接幫他轉向去妳的飲水機點檢系統網址
+            if (upperText.includes("WD")) {
+               let cleanWdId = decodedText;
+               if (decodedText.includes('id=')) {
+                  cleanWdId = decodedText.split('id=')[1].split('&')[0];
+               }
+               // 🚀 請把下面的網址換成妳實際「飲水機系統」的網址即可
+               window.location.href = "https://jarllytec-ehs.github.io/water-check/?id=" + cleanWdId;
+               return; // 攔截跳出，不執行下面的消防邏輯
+            }
+
+            // 🚒 如果不是飲水機，則維持原來的消防點檢處理
             let cleanId = decodedText;
             if (decodedText.includes('id=')) {
                cleanId = decodedText.split('id=')[1].split('&')[0];
@@ -202,7 +218,6 @@
    window.memoryDoneList = new Set();
   }
  
-  // 🌟 精準定位抽絲繭過濾器
  function findDataInRaw(rawData, targetId, fieldName) {
    if (!rawData) return "";
     
@@ -299,7 +314,6 @@
        }
      }
  
-     // 🟡 讀取後端資料與前端自適應配對過濾
      try {
        const res = await fetch(READ_API, { method: 'POST', body: JSON.stringify({}) });
        if (res.ok) {
@@ -314,7 +328,6 @@
            return;
          }
          
-         // 🏢 自動在整張大表裡精準尋找「這台設備」的位置
          let locText = "";
          if (data && data.deviceLocation) {
            locText = findDataInRaw(data.deviceLocation, eqId, "廠區位置");
@@ -324,7 +337,6 @@
          }
          document.getElementById('deviceLocation').innerText = locText || '總表未註記位置';
  
-         // 📅 自動在整張大表裡精準尋找「這台設備」的效期
          if (type === "DCP") {
            let expiryText = "";
            if (data && data.deviceDetails) {
@@ -344,8 +356,8 @@
        document.getElementById('deviceLocation').innerText = "總表未註記位置";
        if (type === "DCP") document.getElementById('deviceExpiryDate').innerText = "2026-06-01";
      }
-    }
-  };
+   }
+ };
  
  function lockUI(eqId) {
    document.getElementById('mainUI').innerHTML = `
@@ -366,7 +378,6 @@
     }
   }
  
-  // 4. 🌟 進度看板資料抓取（整合版：只添加已接受與改善日期資訊，不剔除資料）
   async function fetchDashboardData() {
     const btn = document.getElementById('refreshBtn');
     if (btn) btn.classList.add('animate-spin-custom');
@@ -383,10 +394,8 @@
       console.error("看板抓取失敗:", e); 
     }
 
-    // 🎯 依據您的新需求：【不剔除任何異常項目】，保留所有列出的異常，純粹在畫面上展示進度資訊
     const activeErrors = data.errorList || [];
 
-    // 從後端陣列動態過濾並加總出各廠設備總數
     let allDevices = data.deviceDetails || [];
     let j1Total = allDevices.filter(d => String(d.設備編號 || '').toUpperCase().startsWith('J1')).length || 115;
     let j2Total = allDevices.filter(d => String(d.設備編號 || '').toUpperCase().startsWith('J2')).length || 62;
@@ -417,7 +426,7 @@
             if (repairItem) {
               const rDate = String(repairItem.完成改善日期 || '').trim();
               const prog = String(repairItem.改善進度 || repairItem.狀態 || '').trim();
-              if (rDate.length > 0 && rDate !== 'undefined' && rDate !== 'null' || prog.includes('已完成') || prog.includes('已改善')) {
+              if (rDate.length > 0 && rDate !== 'undefined' && rDate !== 'null' || prog.includes('Macro') || prog.includes('已改善')) {
                 isFound = true;
               }
             }
@@ -466,13 +475,11 @@
       </div>
     `).join('') || "目前無過期警示";
       
-    // 💡 渲染「異常損壞明細」，並加上「接收異常日期」與「完成改善日期」的排版顯示
     document.getElementById('stat-error-count').innerText = activeErrors.length;
     document.getElementById('error-list').innerHTML = activeErrors.map(e => {
       let locText = e.廠區位置 || e.正確位置 || "";
       if (typeof locText === 'object') locText = locText.廠區位置 || locText.正確位置 || "";
       
-      // 擷取並格式化日期文字，若無資料則給予預設提示文字
       const rDate = String(e.接收異常日期 || '').trim();
       const cDate = String(e.完成改善日期 || '').trim();
       
@@ -525,9 +532,9 @@ selectedAbnormalItems.delete(item); btn.classList.remove('selected'); }
    const localKey = getInspectedKey(eqId);
  
    if (window.memoryDoneList.has(eqId)) {
-     alert('🛑 此設備剛才已完成點檢！');
-     lockUI(eqId);
-     return;
+      alert('🛑 此設備剛才已完成點檢！');
+      lockUI(eqId);
+      return;
     }
  
    isSubmitting = true; 
