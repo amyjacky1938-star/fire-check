@@ -7,11 +7,11 @@
  
  <script src="https://unpkg.com/html5-qrcode"></script>
  
+ <link class="apple-touch-icon" href="https://cdn.phototourl.com/free/2026-05-12-aea1713e-4f2a-46d6-a473-93fb2a3448ba.png">
  <link rel="manifest" href="manifest.json">
  <meta name="apple-mobile-web-app-capable" content="yes">
  <meta name="apple-mobile-web-app-status-bar-style" content="black">
  <meta name="apple-mobile-web-app-title" content="消防點檢 GO">
- <link class="apple-touch-icon" href="https://cdn.phototourl.com/free/2026-05-12-aea1713e-4f2a-46d6-a473-93fb2a3448ba.png">
  
  <script src="https://cdn.tailwindcss.com"></script>  
  <script>
@@ -161,7 +161,7 @@
  </div>
  
 <script>
-  // 1. 掃描器邏輯 (💡 在此整合：不設限讀取！掃到飲水機自動轉彎)
+  // 1. 掃描器邏輯 (💡 在此精準整合飲水機各樓層二維條碼跳轉)
  function startScanner() {
     const readerDiv = document.getElementById('reader');
     readerDiv.classList.remove('hidden'); 
@@ -174,21 +174,26 @@
         html5QrCode.stop().then(() => {
             readerDiv.classList.add('hidden'); 
             
-            // 🎯 【核心修正：讓掃描器可以讀取並判別飲水機】
             let upperText = decodedText.trim().toUpperCase();
             
-            // 如果同仁掃到的條碼或網址包含 "WD" (飲水機)，直接幫他轉向去妳的飲水機點檢系統網址
+            // 🎯 【核心防呆：只要條碼內容含有 WD，代表是任何廠區樓層的飲水機】
             if (upperText.includes("WD")) {
                let cleanWdId = decodedText;
+               // 幫妳把不管是網址還是純文字的條碼，精準切出真正的飲水機 ID 編號
                if (decodedText.includes('id=')) {
                   cleanWdId = decodedText.split('id=')[1].split('&')[0];
+               } else if (decodedText.includes('/')) {
+                  // 如果條碼是像 .../WD-J1-1F-01 這種形式，切出最後面的編號
+                  const parts = decodedText.split('/');
+                  cleanWdId = parts[parts.length - 1];
                }
-               // 🚀 請把下面的網址換成妳實際「飲水機系統」的網址即可
-               window.location.href = "https://amyjacky1938-star.github.io/water-check/" + cleanWdId;
-               return; // 攔截跳出，不執行下面的消防邏輯
+               
+               // 🚀 100% 精準串接到妳提供的飲水機網址，帶上各個樓層正確的參數跳轉！
+               window.location.href = "https://amyjacky1938-star.github.io/water-check/?id=" + cleanWdId;
+               return; 
             }
 
-            // 🚒 如果不是飲水機，則維持原來的消防點檢處理
+            // 🚒 如果不是飲水機，則維持原本的消防點檢網址處理
             let cleanId = decodedText;
             if (decodedText.includes('id=')) {
                cleanId = decodedText.split('id=')[1].split('&')[0];
