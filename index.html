@@ -161,11 +161,34 @@
  </div>
  
 <script>
-  // 1. 掃描器邏輯 (💡 在此精準整合飲水機各樓層二維條碼跳轉)
- function startScanner() {
+  // 🛠️ 核心跨系統防呆判定功能：如果代號含有 WD，彈出提示並秒轉至飲水機系統
+  function handleCrossSystemRedirect(rawText) {
+    let upperText = rawText.trim().toUpperCase();
+    
+    if (upperText.includes("WD")) {
+       let cleanWdId = upperText;
+       
+       // 精準解析代號
+       if (upperText.includes('ID=')) {
+          cleanWdId = upperText.split('ID=')[1].split('&')[0];
+       } else if (upperText.includes('/')) {
+          const parts = upperText.split('/');
+          cleanWdId = parts[parts.length - 1];
+       }
+       
+       alert("💡 偵測到此條碼屬於【飲水機設施】，系統將自動為您切換至飲水機點檢網頁！");
+       // 精準串接到妳的飲水機專屬網站並帶入 ID
+       window.location.href = "https://amyjacky1938-star.github.io/water-check/?id=" + cleanWdId;
+       return true; 
+    }
+    return false;
+  }
+
+  // 1. 掃描器邏輯
+  function startScanner() {
     const readerDiv = document.getElementById('reader');
     readerDiv.classList.remove('hidden'); 
-    
+     
     const html5QrCode = new Html5Qrcode("reader");
     html5QrCode.start(
       { facingMode: "environment" },
@@ -174,31 +197,15 @@
         html5QrCode.stop().then(() => {
             readerDiv.classList.add('hidden'); 
             
-            let upperText = decodedText.trim().toUpperCase();
-            
-            // 🎯 【核心防呆：只要條碼內容含有 WD，代表是任何廠區樓層的飲水機】
-            if (upperText.includes("WD")) {
-               let cleanWdId = decodedText;
-               // 幫妳把不管是網址還是純文字的條碼，精準切出真正的飲水機 ID 編號
-               if (decodedText.includes('id=')) {
-                  cleanWdId = decodedText.split('id=')[1].split('&')[0];
-               } else if (decodedText.includes('/')) {
-                  // 如果條碼是像 .../WD-J1-1F-01 這種形式，切出最後面的編號
-                  const parts = decodedText.split('/');
-                  cleanWdId = parts[parts.length - 1];
-               }
-               
-               // 🚀 100% 精準串接到妳提供的飲水機網址，帶上各個樓層正確的參數跳轉！
-               window.location.href = "https://amyjacky1938-star.github.io/water-check/?id=" + cleanWdId;
-               return; 
-            }
+            // 🛑 掃描時防呆防錯判定
+            if (handleCrossSystemRedirect(decodedText)) return;
 
-            // 🚒 如果不是飲水機，則維持原本的消防點檢網址處理
-            let cleanId = decodedText;
+            // 🚒 如果是消防設備，維持原本的消防點檢網址處理
+            let cleanId = decodedText.trim();
             if (decodedText.includes('id=')) {
                cleanId = decodedText.split('id=')[1].split('&')[0];
             }
-            window.location.href = window.location.pathname + "?id=" + cleanId;
+            window.location.href = window.location.origin + window.location.pathname + "?id=" + cleanId.toUpperCase();
         });
       },
       (errorMessage) => { }
@@ -207,14 +214,14 @@
  
   // 2. 設備清單設定
   let selectedAbnormalItems = new Set();
- const deviceConfigs = {
+  const deviceConfigs = {
    "DCP": { name: "乾粉滅火器", items: ["鋼瓶無鏽蝕變形", "皮管無堵塞斷裂", "安全插銷已固定", "壓力表指針在綠區", "前方無障礙物且在效期內"], ab: ["壓力不足", "插銷遺失", "藥劑過期", "瓶身鏽蝕", "皮管破損"] },
    "CO2": { name: "二氧化碳滅火器", items: ["鋼瓶無鏽蝕變形", "喇叭噴嘴無裂損", "安全插銷已固定", "重量已有標示", "前方無障礙物"], ab: ["重量未標示", "插銷遺失", "噴嘴裂損", "前方堆放雜物"] },
    "FH": { name: "消防栓", items: ["箱門前應淨空", "箱門完整可開關", "水帶無破損", "水瞄可轉動"], ab: ["箱體損壞", "水帶缺少或破裂", "水瞄不能轉動", "開關漏水", "前方堆放雜物"] },
    "EP": { name: "緩降機", items: ["器具完整無短缺", "支架固定良好", "操作方法標示清楚", "下降空間無阻擋"], ab: ["支架鬆動", "繩索受潮或不符合樓層高度", "操作方式標示不清", "下降空間受阻"] }
   };
  
- function getInspectedKey(eqId) {
+  function getInspectedKey(eqId) {
    const now = new Date();
    return `inspected_${eqId}_${now.getFullYear()}_${now.getMonth() + 1}`;
   }
@@ -223,7 +230,7 @@
    window.memoryDoneList = new Set();
   }
  
- function findDataInRaw(rawData, targetId, fieldName) {
+  function findDataInRaw(rawData, targetId, fieldName) {
    if (!rawData) return "";
     
    if (typeof rawData === 'string' && !rawData.startsWith('{') && !rawData.startsWith('[')) {
@@ -262,18 +269,23 @@
   }
  
   // 3. 頁面初始化載入
- window.onload = async () => {
+  window.onload = async () => {
    const savedName = localStorage.getItem('inspector');
    if (savedName) document.getElementById('inspector').value = savedName;
     
    const urlParams = new URLSearchParams(window.location.search);
-   let eqId = urlParams.get('id');
+   let eqId = urlParams.get('id') || urlParams.get('eqId');
  
    if (eqId) {
-     document.getElementById('displayId').innerText = eqId;
+     let cleanEqId = eqId.trim().toUpperCase();
+     
+     // 🛑 網址輸入防呆：如果網址參數誤帶飲水機編號，立即直接跳轉
+     if (handleCrossSystemRedirect(cleanEqId)) return;
+
+     document.getElementById('displayId').innerText = cleanEqId;
      document.getElementById('displayId').classList.remove('text-red-500');
      
-     let type = eqId.includes("CO2") ? "CO2" : eqId.includes("FH") ? "FH" : eqId.includes("EP") ? "EP" : "DCP";
+     let type = cleanEqId.includes("CO2") ? "CO2" : cleanEqId.includes("FH") ? "FH" : cleanEqId.includes("EP") ? "EP" : "DCP";
      const config = deviceConfigs[type];
      
      const typeNameEl = document.getElementById('deviceTypeName');
@@ -291,13 +303,13 @@
      `).join('');
  
      let isAlreadyInspected = false; 
-     if (window.memoryDoneList.has(eqId)) isAlreadyInspected = true;
+     if (window.memoryDoneList.has(cleanEqId)) isAlreadyInspected = true;
      try {
-       if (localStorage.getItem(getInspectedKey(eqId)) === 'true') isAlreadyInspected = true;
+       if (localStorage.getItem(getInspectedKey(cleanEqId)) === 'true') isAlreadyInspected = true;
      } catch(e) {}
  
      if (isAlreadyInspected) {
-       lockUI(eqId);
+       lockUI(cleanEqId);
        return;
      }
      
@@ -326,29 +338,28 @@
          
          let backendDoneList = data && data.doneList ? data.doneList : [];
          let rawStringData = JSON.stringify(backendDoneList).toUpperCase();
-         let cleanEqId = String(eqId).trim().toUpperCase();
  
          if (rawStringData.includes(cleanEqId)) {
-           lockUI(eqId);
+           lockUI(cleanEqId);
            return;
          }
          
          let locText = "";
          if (data && data.deviceLocation) {
-           locText = findDataInRaw(data.deviceLocation, eqId, "廠區位置");
+           locText = findDataInRaw(data.deviceLocation, cleanEqId, "廠區位置");
          }
          if (!locText && data && data.deviceDetails) {
-           locText = findDataInRaw(data.deviceDetails, eqId, "廠區位置");
+           locText = findDataInRaw(data.deviceDetails, cleanEqId, "廠區位置");
          }
          document.getElementById('deviceLocation').innerText = locText || '總表未註記位置';
  
          if (type === "DCP") {
            let expiryText = "";
            if (data && data.deviceDetails) {
-              expiryText = findDataInRaw(data.deviceDetails, eqId, "效期");
+              expiryText = findDataInRaw(data.deviceDetails, cleanEqId, "效期");
            }
            if (!expiryText && data && data.warningList) {
-              expiryText = findDataInRaw(data.warningList, eqId, "效期");
+              expiryText = findDataInRaw(data.warningList, cleanEqId, "效期");
            }
            document.getElementById('deviceExpiryDate').innerText = expiryText ? String(expiryText).substring(0, 10) : "2026-06-01";
          }
@@ -362,9 +373,9 @@
        if (type === "DCP") document.getElementById('deviceExpiryDate').innerText = "2026-06-01";
      }
    }
- };
+  };
  
- function lockUI(eqId) {
+  function lockUI(eqId) {
    document.getElementById('mainUI').innerHTML = `
       <div class="flat-card text-center py-8 border-2 border-yellow-500 bg-yellow-50/50 my-4">
         <p class="text-5xl mb-3">🛑</p>
@@ -519,14 +530,16 @@
     if (btn) btn.classList.remove('animate-spin-custom');
   }
  
- function toggleChip(btn) {
+  function toggleChip(btn) {
    const item = btn.innerText;
    if (selectedAbnormalItems.has(item)) {
-selectedAbnormalItems.delete(item); btn.classList.remove('selected'); }
-   else { selectedAbnormalItems.add(item); btn.classList.add('selected'); }
+      selectedAbnormalItems.delete(item); btn.classList.remove('selected'); 
+   } else { 
+      selectedAbnormalItems.add(item); btn.classList.add('selected'); 
+   }
   }
  
- async function submitData(status) {
+  async function submitData(status) {
    if (isSubmitting) return; 
  
    const inspector = document.getElementById('inspector').value;
@@ -578,7 +591,7 @@ selectedAbnormalItems.delete(item); btn.classList.remove('selected'); }
     }
   }
  
- function showPage(page) {
+  function showPage(page) {
    document.getElementById('pageCheck').classList.toggle('hidden', page !== 'check');
    document.getElementById('pageDash').classList.toggle('hidden', page !== 'dash');
    document.getElementById('btnCheck').classList.toggle('active', page === 'check');
