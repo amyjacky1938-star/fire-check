@@ -17,6 +17,9 @@
  <script>
    const WEBHOOK_URL = "https://default5e08b912309f4900b9e179fae11d8e.2a.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/c10d2f174a544776b39a40c91439e042/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Scf21GXPNskql0lrEVY8xZXKuMetE9LJZoYRrcVF9e8";
    const READ_API = "https://default5e08b912309f4900b9e179fae11d8e.2a.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/936bca953b404ce3b51409647874490d/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=5Zexelu5ljymRba54JEjA6o7kITqo5QIb2baBR8QvPA";
+   
+   // 🎯 OneDrive 檔案下載中轉 API（用來抓取消防平面圖）
+   const DOWNLOAD_FILE_API = "https://default5e08b912309f4900b9e179fae11d8e.2a.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/92b8d989449d4f70983d1365e3c4c3d8/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=xnVNjU5EcnH8a9uu2_zYO7cvQGJe2mNh7rupl-2mvwQ";
  </script>
  
  <style>
@@ -93,6 +96,12 @@
          <span>📅 設備有效效期：</span>
          <span id="deviceExpiryDate" class="text-yellow-600 font-mono">載入中...</span>
        </div>
+       
+       <div class="pt-2 mt-1 border-t border-dashed border-slate-200">
+         <button type="button" onclick="viewFloorMap()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-center py-2 rounded-xl font-black text-[11px] transition-all flex items-center justify-center gap-1">
+           🗺️ 查看本廠區最新消防配置圖
+         </button>
+       </div>
      </div>
    </div>
  
@@ -161,14 +170,13 @@
  </div>
  
 <script>
-  // 🛠️ 核心跨系統防呆判定功能：如果代號含有 WD，彈出提示並秒轉至飲水機系統
+  // 🛠️ 核心跨系統防呆判定功能
   function handleCrossSystemRedirect(rawText) {
     let upperText = rawText.trim().toUpperCase();
     
     if (upperText.includes("WD")) {
        let cleanWdId = upperText;
        
-       // 精準解析代號
        if (upperText.includes('ID=')) {
           cleanWdId = upperText.split('ID=')[1].split('&')[0];
        } else if (upperText.includes('/')) {
@@ -177,7 +185,6 @@
        }
        
        alert("💡 偵測到此條碼屬於【飲水機設施】，系統將自動為您切換至飲水機點檢網頁！");
-       // 精準串接到妳的飲水機專屬網站並帶入 ID
        window.location.href = "https://amyjacky1938-star.github.io/water-check/?id=" + cleanWdId;
        return true; 
     }
@@ -188,7 +195,7 @@
   function startScanner() {
     const readerDiv = document.getElementById('reader');
     readerDiv.classList.remove('hidden'); 
-     
+       
     const html5QrCode = new Html5Qrcode("reader");
     html5QrCode.start(
       { facingMode: "environment" },
@@ -197,10 +204,8 @@
         html5QrCode.stop().then(() => {
             readerDiv.classList.add('hidden'); 
             
-            // 🛑 掃描時防呆防錯判定
             if (handleCrossSystemRedirect(decodedText)) return;
 
-            // 🚒 如果是消防設備，維持原本的消防點檢網址處理
             let cleanId = decodedText.trim();
             if (decodedText.includes('id=')) {
                cleanId = decodedText.split('id=')[1].split('&')[0];
@@ -268,6 +273,36 @@
    return "";
   }
  
+  // 🗺️ 專屬調閱函數：直接根據目前的設備 ID 取出前綴並呼叫下載
+  async function viewFloorMap() {
+    const displayIdText = document.getElementById('displayId').innerText.trim().toUpperCase();
+    if (!displayIdText || displayIdText.includes("請掃描")) {
+      alert("請先完成設備條碼掃描！");
+      return;
+    }
+    const factoryPrefix = displayIdText.split('-')[0]; 
+    const targetFileName = `${factoryPrefix}-平面圖.pdf`;
+    
+    alert(`正在為您從雲端調閱現址消防平面配置圖：\n[ ${targetFileName} ]`);
+    
+    try {
+      const response = await fetch(DOWNLOAD_FILE_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileName: targetFileName })
+      });
+      if (response.ok) {
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, '_blank');
+      } else {
+        alert(`調閱失敗！請確認該平面圖已存放至專用 OneDrive 資料夾，且命名為：${targetFileName}`);
+      }
+    } catch(e) {
+      alert("連線失敗，請檢查網路狀態");
+    }
+  }
+
   // 3. 頁面初始化載入
   window.onload = async () => {
    const savedName = localStorage.getItem('inspector');
@@ -279,7 +314,6 @@
    if (eqId) {
      let cleanEqId = eqId.trim().toUpperCase();
      
-     // 🛑 網址輸入防呆：如果網址參數誤帶飲水機編號，立即直接跳轉
      if (handleCrossSystemRedirect(cleanEqId)) return;
 
      document.getElementById('displayId').innerText = cleanEqId;
@@ -375,22 +409,30 @@
    }
   };
  
+  // 🔒 修改後的鎖定畫面：保留設備 ID 及在黃色卡片內加開平面圖按鈕
   function lockUI(eqId) {
    document.getElementById('mainUI').innerHTML = `
-      <div class="flat-card text-center py-8 border-2 border-yellow-500 bg-yellow-50/50 my-4">
-        <p class="text-5xl mb-3">🛑</p>
-        <p class="text-base font-black text-slate-800">此設備本月已完成點檢</p>
-        <p class="text-xs text-slate-500 mt-2 font-mono bg-white/80 py-1 px-3 rounded-md inline-block border border-slate-200">${eqId}</p>
-        <div class="block">
-          <button onclick="window.location.href=window.location.pathname" class="mt-6 bg-blue-600 text-white text-xs font-black px-5 py-2.5 rounded-xl shadow-md">
-            🔄 返回重新掃描
-          </button>
-        </div>
-      </div>
+       <div class="flat-card text-center py-8 border-2 border-yellow-500 bg-yellow-50/50 my-4">
+         <p class="text-5xl mb-3">🛑</p>
+         <p class="text-base font-black text-slate-800">此設備本月已完成點檢</p>
+         <p class="text-xs text-slate-500 mt-2 font-mono bg-white/80 py-1 px-3 rounded-md inline-block border border-slate-200">${eqId}</p>
+         
+         <div class="mt-4 px-2">
+           <button type="button" onclick="viewFloorMap()" class="w-full bg-white hover:bg-slate-100 text-slate-700 text-center py-2.5 rounded-xl font-black text-[11px] border border-slate-200 transition-all flex items-center justify-center gap-1 shadow-sm">
+             🗺️ 查看本廠區最新消防配置圖
+           </button>
+         </div>
+
+         <div class="block">
+           <button onclick="window.location.href=window.location.pathname" class="mt-6 bg-blue-600 text-white text-xs font-black px-5 py-2.5 rounded-xl shadow-md active:scale-95 transition-transform">
+             🔄 返回重新掃描
+           </button>
+         </div>
+       </div>
    `;
    document.getElementById('mainUI').classList.remove('hidden');
    if (document.getElementById('infoContainer')) {
-     document.getElementById('infoContainer').classList.add('hidden');
+      document.getElementById('infoContainer').classList.add('hidden');
     }
   }
  
